@@ -56,14 +56,14 @@ const fileUploadFunction = (req, res, next) => {
   });
 };
 
-const sendEmail = async(options) => {
+const sendEmail = async (options) => {
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    service: "gmail",
     auth: {
       user: process.env.EMAIL,
-      pass: process.env.PASSWORD
-    }
-  })
+      pass: process.env.PASSWORD,
+    },
+  });
 
   const mailOptions = {
     from: process.env.EMAIL_FROM,
@@ -73,7 +73,7 @@ const sendEmail = async(options) => {
   };
 
   await transporter.sendMail(mailOptions);
-}
+};
 
 router.post("/forgotpassword", async (req, res) => {
   const { email } = req.body;
@@ -92,7 +92,7 @@ router.post("/forgotpassword", async (req, res) => {
 
     await user.save();
 
-    const resetUrl = process.env.FRONTEND_URL+`/resetpassword?token=${token}`;
+    const resetUrl = process.env.FRONTEND_URL + `/resetpassword?token=${token}`;
 
     const message = `
       <h1>Password Reset Request</h1>
@@ -111,7 +111,6 @@ router.post("/forgotpassword", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-
 
 router.put("/resetpassword/:token", async (req, res) => {
   const { token } = req.params;
@@ -138,7 +137,6 @@ router.put("/resetpassword/:token", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-
 
 router.get("/test", (req, res) => {
   res.send("Auth routes are working !");
@@ -255,8 +253,17 @@ router.post("/login", async (req, res, next) => {
       process.env.JWT_REFRESH_SECRET_KEY,
       { expiresIn: "50m" }
     );
-    res.cookie("authToken", authToken, { httpOnly: true });
-    res.cookie("refreshToken", refreshToken, { httpOnly: true });
+    res.cookie("authToken", authToken, {
+      sameSite: "none",
+      httpOnly: true,
+      secure: true,
+    });
+    res.cookie("refreshToken", refreshToken, {
+      sameSite: "none",
+      httpOnly: true,
+      secure: true,
+      e,
+    });
     return responseFunction(
       res,
       200,
