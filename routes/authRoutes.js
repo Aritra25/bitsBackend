@@ -10,7 +10,7 @@ const responseFunction = require("../utils/responseFunction.js");
 const fs = require("fs");
 const errorHandler = require("../middlewares/errorMiddleware");
 const authTokenHandler = require("../middlewares/checkAuthToken");
-const { ok } = require("assert");
+
 const crypto = require("crypto");
 
 async function mailer(recieveremail, code) {
