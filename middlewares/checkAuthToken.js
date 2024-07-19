@@ -37,12 +37,12 @@ function checkAuth(req, res, next) {
             );
 
             res.cookie("authToken", newAuthToken, {
-              sameSite: "none",
+              sameSite: 'none',
               httpOnly: true,
               secure: true,
             });
             res.cookie("refreshToken", newRefreshToken, {
-              sameSite: "none",
+              sameSite: 'none',
               httpOnly: true,
               secure: true,
             });

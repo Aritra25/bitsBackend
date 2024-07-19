@@ -254,15 +254,14 @@ router.post("/login", async (req, res, next) => {
       { expiresIn: "50m" }
     );
     res.cookie("authToken", authToken, {
-      sameSite: "none",
+      sameSite: 'none',
       httpOnly: true,
       secure: true,
     });
     res.cookie("refreshToken", refreshToken, {
-      sameSite: "none",
+      sameSite: 'none',
       httpOnly: true,
       secure: true,
-      e,
     });
     return responseFunction(
       res,

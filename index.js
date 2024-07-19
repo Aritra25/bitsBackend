@@ -52,8 +52,8 @@ app.use(bodyParser.json());
 
 app.use(cookieParser({
   httpOnly: true,
-  secure: true,
   sameSite: 'none',
+  secure: true,
   maxAge: 1000 * 60 * 60 * 24 * 7,
   signed: true
 }));
