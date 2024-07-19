@@ -1,0 +1,17 @@
+{
+    "version": 2,
+    "name": "Bits",
+    "builds": [
+      {
+        "src": "package.json",
+        "use": "@vercel/node"
+      }
+    ],
+    "routes": [
+      {
+        "src": "/(.*)",
+        "dest": "/"
+      }
+    ]
+  }
+  
