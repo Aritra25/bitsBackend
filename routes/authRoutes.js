@@ -92,7 +92,7 @@ router.post("/forgotpassword", async (req, res) => {
 
     await user.save();
 
-    const resetUrl = process.env.FRONTEND_URL + `/resetpassword/${token}`;
+    const resetUrl = `${process.env.FRONTEND_URL}/resetpassword?token=${token}`;
 
     const message = `
       <h1>Password Reset Request</h1>
@@ -115,6 +115,10 @@ router.post("/forgotpassword", async (req, res) => {
 router.put("/resetpassword/:token", async (req, res) => {
   const { token } = req.params;
   const { password } = req.body;
+
+  if (!password) {
+    return res.status(400).json({ message: 'Password is required' });
+  }
 
   try {
     const user = await User.findOne({
