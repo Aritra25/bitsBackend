@@ -175,6 +175,8 @@ router.post("/register", async (req, res) => {
     const { name, email, password, otp } = req.body;
     let user = await User.findOne({ email: email });
     let verificationQueue = await Verification.findOne({ email: email });
+    console.log(otp);
+
     if (user) {
       return responseFunction(res, 400, "User already exists", null, false);
     }
@@ -183,7 +185,8 @@ router.post("/register", async (req, res) => {
       return responseFunction(res, 400, "Please send OTP first", null, false);
     }
 
-    const isMatch = await bcrypt.compare(otp, verificationQueue.code);
+    const isMatch =bcrypt.compare(otp,verificationQueue.code);
+
     if (!isMatch) {
       return responseFunction(res, 400, "Invalid OTP", null, false);
     }
@@ -198,7 +201,7 @@ router.post("/register", async (req, res) => {
     user = new User({
       name: name,
       email: email,
-      password: password,
+      password: await bcrypt.hash(password, 10),
       profilePic: uploadResult.Key, // Store the S3 file key
     });
 
@@ -211,6 +214,8 @@ router.post("/register", async (req, res) => {
   }
 });
 
+
+
 router.post("/sendotp", async (req, res) => {
   const { email } = req.body;
 
@@ -220,12 +225,16 @@ router.post("/sendotp", async (req, res) => {
 
   try {
     await Verification.deleteOne({ email: email });
-    const code = Math.floor(100000 + Math.random() * 900000);
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
     await mailer(email, code);
 
+    console.log(code)
+
+    
+    // const hashedCode = await bcrypt.hash(code, 10);
     const newVerification = new Verification({
       email,
-      code: await bcrypt.hash(code.toString(), 10), // Ensure the code is hashed for security
+      code, // Store the hashed code
     });
 
     await newVerification.save();
@@ -235,6 +244,8 @@ router.post("/sendotp", async (req, res) => {
     return responseFunction(res, 500, "Internal server error", null, false);
   }
 });
+
+
 
 router.post("/login", async (req, res, next) => {
   try {
