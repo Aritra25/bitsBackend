@@ -206,7 +206,7 @@ router.get("/gets3urlbykey/:key", authTokenHandler, async (req, res, next) => {
   // console.log("first")
   try {
     const { key } = req.params;
-    console.log(key)
+    
     const signedUrl = await getObjectURL(key);
 
     if (!signedUrl) {

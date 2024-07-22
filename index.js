@@ -58,6 +58,10 @@ app.use(cookieParser({
   signed: true
 }));
 
+const fileUpload = require('express-fileupload');
+app.use(fileUpload());
+
+
 app.use("/public", express.static("public"));
 
 app.use("/auth", authRoutes);

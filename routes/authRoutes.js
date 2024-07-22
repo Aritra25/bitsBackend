@@ -10,8 +10,13 @@ const responseFunction = require("../utils/responseFunction.js");
 const fs = require("fs");
 const errorHandler = require("../middlewares/errorMiddleware");
 const authTokenHandler = require("../middlewares/checkAuthToken");
+const dotenv = require("dotenv");
 
 const crypto = require("crypto");
+const AWS = require("aws-sdk");
+
+
+dotenv.config();
 
 async function mailer(recieveremail, code) {
   let transporter = nodemailer.createTransport({
@@ -34,27 +39,45 @@ async function mailer(recieveremail, code) {
   });
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "./public");
-  },
-  filename: (req, file, cb) => {
-    let fileType = file.mimetype.split("/")[1];
-    console.log(req.headers.filename);
-    cb(null, `${Date.now()}.${fileType}`);
-  },
+// Configure AWS SDK
+AWS.config.update({
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION,
 });
 
-const upload = multer({ storage: storage });
+const s3 = new AWS.S3();
 
-const fileUploadFunction = (req, res, next) => {
-  upload.single("clientfile")(req, res, (err) => {
-    if (err) {
-      return responseFunction(res, 400, "file upload failed", null, false);
-    }
-    next();
-  });
+const uploadToS3 = async (file) => {
+  const params = {
+    Bucket: process.env.AWS_BUCKET_NAME,
+    Key: `${Date.now()}_${file.originalname}`,
+    Body: file.data,
+    ContentType: file.mimetype
+  };
+  return s3.upload(params).promise();
 };
+
+const getPresignedUrl = (key) => {
+  const params = {
+    Bucket: process.env.AWS_BUCKET_NAME,
+    Key: key,
+    Expires: 60 * 60 // 1 hour
+  };
+  return s3.getSignedUrl('getObject', params);
+};
+
+// const upload = multer({ storage: storage });
+
+// const fileUploadFunction = (req, res, next) => {
+//   upload.single("clientfile")(req, res, (err) => {
+//     if (err) {
+//       console.log(err)
+//       return responseFunction(res, 400, "File upload failed", null, false);
+//     }
+//     next();
+//   });
+// };
 
 const sendEmail = async (options) => {
   const transporter = nodemailer.createTransport({
@@ -147,85 +170,41 @@ router.get("/test", (req, res) => {
   // mailer("aritra.maji2001@gmail.com",12345);
 });
 
-router.post("/sendotp", async (req, res) => {
-  const { email } = req.body;
-
-  if (!email) {
-    return responseFunction(res, 400, "Email is required", null, false);
-  }
-
-  try {
-    await Verification.deleteOne({ email: email });
-    const code = Math.floor(100000 + Math.random() * 900000);
-    await mailer(email, code);
-    // await Verification.findOneAndDelete({email: email})
-    const newVerification = new Verification({
-      email,
-      code,
-    });
-
-    await newVerification.save();
-    return responseFunction(res, 200, "OTP sent successfully", null, true);
-  } catch (error) {
-    return responseFunction(res, 500, "Internal server error", null, false);
-  }
-});
-
-router.post("/register", fileUploadFunction, async (req, res, next) => {
+router.post("/register", async (req, res) => {
   try {
     const { name, email, password, otp } = req.body;
     let user = await User.findOne({ email: email });
     let verificationQueue = await Verification.findOne({ email: email });
     if (user) {
-      if (req.file && req.file.path) {
-        fs.unlink(req.file.path, (err) => {
-          if (err) {
-            console.log(err);
-          } else {
-            console.log(`file deleted successfully !`);
-          }
-        });
-      }
+      return responseFunction(res, 400, "User already exists", null, false);
     }
 
     if (!verificationQueue) {
-      if (req.file && req.file.path) {
-        fs.unlink(req.file.path, (err) => {
-          if (err) {
-            console.log(err);
-          } else {
-            console.log("File selected successfully");
-          }
-        });
-      }
-      return responseFunction(res, 400, "Please send otp first", null, false);
+      return responseFunction(res, 400, "Please send OTP first", null, false);
     }
 
     const isMatch = await bcrypt.compare(otp, verificationQueue.code);
-
     if (!isMatch) {
-      if (req.file && req.file.path) {
-        fs.unlink(res.file.path, (err) => {
-          if (err) {
-            console.error("Error deleting file", err);
-          } else {
-            console.log("file deleted successfully");
-          }
-        });
-      }
       return responseFunction(res, 400, "Invalid OTP", null, false);
     }
+
+    // Upload profile picture to S3
+    const file = req.files.clientfile;
+    const uploadResult = await uploadToS3(file);
+
+    // Generate pre-signed URL for accessing the file
+    const presignedUrl = getPresignedUrl(uploadResult.Key);
 
     user = new User({
       name: name,
       email: email,
       password: password,
-      profilePic: req.file.path,
+      profilePic: uploadResult.Key, // Store the S3 file key
     });
 
     await user.save();
     await Verification.deleteOne({ email: email });
-    return responseFunction(res, 200, "registered successfully", null, true);
+    return responseFunction(res, 200, "Registered successfully", { profilePicUrl: presignedUrl }, true);
   } catch (error) {
     console.log(error);
     return responseFunction(res, 500, "Internal Server Error", null, false);
