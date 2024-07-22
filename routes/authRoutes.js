@@ -211,6 +211,31 @@ router.post("/register", async (req, res) => {
   }
 });
 
+router.post("/sendotp", async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return responseFunction(res, 400, "Email is required", null, false);
+  }
+
+  try {
+    await Verification.deleteOne({ email: email });
+    const code = Math.floor(100000 + Math.random() * 900000);
+    await mailer(email, code);
+
+    const newVerification = new Verification({
+      email,
+      code: await bcrypt.hash(code.toString(), 10), // Ensure the code is hashed for security
+    });
+
+    await newVerification.save();
+    return responseFunction(res, 200, "OTP sent successfully", null, true);
+  } catch (error) {
+    console.error("Error sending OTP:", error);
+    return responseFunction(res, 500, "Internal server error", null, false);
+  }
+});
+
 router.post("/login", async (req, res, next) => {
   try {
     const { email, password } = req.body;
