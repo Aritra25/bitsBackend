@@ -175,7 +175,7 @@ router.post("/register", async (req, res) => {
     const { name, email, password, otp } = req.body;
     let user = await User.findOne({ email: email });
     let verificationQueue = await Verification.findOne({ email: email });
-    console.log(otp);
+    
 
     if (user) {
       return responseFunction(res, 400, "User already exists", null, false);
@@ -201,7 +201,7 @@ router.post("/register", async (req, res) => {
     user = new User({
       name: name,
       email: email,
-      password: await bcrypt.hash(password, 10),
+      password,
       profilePic: uploadResult.Key, // Store the S3 file key
     });
 
@@ -257,7 +257,10 @@ router.post("/login", async (req, res, next) => {
     }
     const isMatch = await bcrypt.compare(password, user.password);
 
+    console.log(isMatch)
+
     if (!isMatch) {
+    
       return responseFunction(res, 400, "Invalid credentials", null, false);
     }
     const authToken = jwt.sign(
